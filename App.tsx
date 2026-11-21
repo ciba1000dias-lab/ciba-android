@@ -59,6 +59,7 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    let hasCatalog = false;
     const applyCatalog = (data: Catalog) => {
       const safeCatalog: Catalog = {
         version: data.version || 1,
@@ -68,6 +69,7 @@ export default function App() {
         subsecciones: Array.isArray(data.subsecciones) ? data.subsecciones : [],
         paginas: Array.isArray(data.paginas) ? data.paginas.filter((item: Article) => item.estado === 'publicado' && !!item.ruta_publica) : []
       };
+      hasCatalog = true;
       setCatalog(safeCatalog);
       setArticles(safeCatalog.paginas);
       setCatalogState('ready');
@@ -85,7 +87,7 @@ export default function App() {
         applyCatalog(data);
         await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(data));
       } catch {
-        if (active && !catalog) setCatalogState('error');
+        if (active && !hasCatalog) setCatalogState('error');
       }
     };
     load();
