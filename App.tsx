@@ -61,7 +61,7 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
-  const normalize = (value: string) => value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('es').trim();
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
 
   const visibleArticles = useMemo(() => {
     const q = normalize(query);
