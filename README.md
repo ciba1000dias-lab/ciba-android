@@ -17,11 +17,10 @@ Aplicación móvil Android de **CIBA: plataforma digital cubana de educación pa
 
 **Versión 0.1.0 · Base Android inicial creada.**
 
-Ya están incorporadas la interfaz nativa, la navegación principal y la apertura de contenidos dentro de la aplicación.
+Ya están incorporadas la interfaz nativa, la navegación principal, la búsqueda de artículos conectada al catálogo y la apertura de contenidos dentro de la aplicación.
 
 Pendiente para las siguientes etapas:
 - conectar el catálogo editorial generado por el sitio;
-- búsqueda real de artículos;
 - biblioteca local y lectura sin conexión;
 - sincronización de actualizaciones editoriales;
 - vincular el proyecto a una cuenta EAS y generar el primer APK de prueba.
