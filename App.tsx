@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+type Article = { id: string; titulo: string; descripcion?: string; columna: string; area?: string; ruta_publica: string; palabras_clave?: string[]; subseccion?: string; estado?: string; };
+
 type Section = {
   id: string; name: string; subtitle: string; description: string;
   color: string; path: string;
@@ -24,6 +26,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [reader, setReader] = useState<{ title: string; url: string } | null>(null);
   const [readerCanGoBack, setReaderCanGoBack] = useState(false);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>('loading');
   const webViewRef = useRef<WebView>(null);
 
   const closeReader = () => {
@@ -41,16 +45,43 @@ export default function App() {
     return () => subscription.remove();
   }, [reader, readerCanGoBack]);
 
+  useEffect(() => {
+    let active = true;
+    fetch(SITE + 'data/catalogo.json')
+      .then(response => {
+        if (!response.ok) throw new Error('Catálogo no disponible');
+        return response.json();
+      })
+      .then(data => {
+        if (!active) return;
+        setArticles(Array.isArray(data.paginas) ? data.paginas.filter((item: Article) => item.estado === 'publicado' && item.ruta_publica) : []);
+        setCatalogState('ready');
+      })
+      .catch(() => { if (active) setCatalogState('error'); });
+    return () => { active = false; };
+  }, []);
+
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('es').trim();
+
+  const visibleArticles = useMemo(() => {
+    const q = normalize(query);
+    if (q.length < 2) return [];
+    return articles.filter(article => {
+      const sectionMatch = selected === 'TODAS' || article.columna === selected;
+      const searchable = normalize([
+        article.id, article.titulo, article.descripcion || '', article.area || '',
+        article.subseccion || '', ...(article.palabras_clave || [])
+      ].join(' '));
+      return sectionMatch && searchable.includes(q);
+    }).slice(0, 30);
+  }, [articles, query, selected]);
+
   const visibleSections = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase('es');
-    return SECTIONS.filter(section => {
-      const matchesTab = selected === 'TODAS' || section.id === selected;
-      const matchesText = !q || (section.name + ' ' + section.subtitle + ' ' + section.description).toLocaleLowerCase('es').includes(q);
-      return matchesTab && matchesText;
-    });
-  }, [query, selected]);
+    return SECTIONS.filter(section => selected === 'TODAS' || section.id === selected);
+  }, [selected]);
 
   const openSection = (section: Section) => setReader({ title: section.name, url: SITE + section.path });
+  const openArticle = (article: Article) => setReader({ title: article.titulo, url: SITE + article.ruta_publica });
   const openSite = () => Linking.openURL(SITE);
 
   return (
@@ -137,6 +168,22 @@ export default function App() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          {query.trim().length >= 2 && (
+            <View style={styles.searchResults}>
+              <Text style={styles.searchResultsTitle}>Resultados de artículos</Text>
+              {catalogState === 'loading' && <Text style={styles.searchHint}>Cargando el catálogo editorial…</Text>}
+              {catalogState === 'error' && <Text style={styles.searchHint}>No se pudo cargar el catálogo. Puedes seguir explorando las cuatro áreas.</Text>}
+              {catalogState === 'ready' && visibleArticles.length === 0 && <Text style={styles.searchHint}>No encontramos artículos con esas palabras. Prueba otra búsqueda.</Text>}
+              {visibleArticles.map(article => (
+                <TouchableOpacity key={article.id} style={styles.articleResult} onPress={() => openArticle(article)}>
+                  <Text style={styles.articleResultArea}>{SECTIONS.find(section => section.id === article.columna)?.name || 'CIBA'} · {article.id}</Text>
+                  <Text style={styles.articleResultTitle}>{article.titulo}</Text>
+                  {!!article.descripcion && <Text style={styles.articleResultDescription}>{article.descripcion}</Text>}
+                  <Text style={styles.articleResultLink}>LEER ARTÍCULO  ›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.content}>
@@ -220,6 +267,14 @@ const styles = StyleSheet.create({
   muted: { color: '#73776D', fontSize: 12, marginTop: 5 },
   searchInput: { minHeight: 49, borderWidth: 1, borderColor: '#E4DDCF', borderRadius: 9, paddingHorizontal: 14, marginTop: 18, color: '#29332D', backgroundColor: '#FFFFFF', fontSize: 13 },
   filters: { gap: 8, paddingTop: 14, paddingBottom: 2 },
+  searchResults: { marginTop: 20, gap: 10 },
+  searchResultsTitle: { color: '#172B27', fontFamily: 'Georgia', fontSize: 19, marginBottom: 2 },
+  searchHint: { color: '#73776D', fontSize: 12, lineHeight: 18 },
+  articleResult: { padding: 14, borderWidth: 1, borderColor: '#E4DDCF', borderRadius: 9, backgroundColor: '#F5F0E5' },
+  articleResultArea: { color: '#A9583E', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  articleResultTitle: { color: '#172B27', fontFamily: 'Georgia', fontSize: 17, lineHeight: 22, marginTop: 6 },
+  articleResultDescription: { color: '#626A60', fontSize: 11, lineHeight: 17, marginTop: 5 },
+  articleResultLink: { color: '#397653', fontSize: 9, fontWeight: '900', letterSpacing: 0.8, marginTop: 10 },
   filter: { borderWidth: 1, borderColor: '#D8D0C1', borderRadius: 18, paddingVertical: 8, paddingHorizontal: 13 },
   filterActive: { backgroundColor: '#172B27', borderColor: '#172B27' },
   filterText: { color: '#526057', fontSize: 10, fontWeight: '700' },
