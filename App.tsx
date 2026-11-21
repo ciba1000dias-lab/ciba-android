@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+// Compatibilidad de tipos entre React Native 0.88 y react-native-webview.
+const NativeWebView = WebView as unknown as React.ComponentType<any>;
+
 type Article = { id: string; titulo: string; descripcion?: string; columna: string; area?: string; ruta_publica: string; palabras_clave?: string[]; subseccion?: string; estado?: string; };
 
 type Section = {
@@ -28,7 +31,7 @@ export default function App() {
   const [readerCanGoBack, setReaderCanGoBack] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
   const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
 
   const closeReader = () => {
     setReader(null);
@@ -86,7 +89,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#172B27" />
+      <StatusBar barStyle="light-content" />
       <Modal visible={!!reader} animationType="slide" onRequestClose={closeReader}>
         <SafeAreaView style={styles.readerSafe}>
           <View style={styles.readerHeader}>
@@ -104,7 +107,7 @@ export default function App() {
               <Text style={styles.readerCloseText}>×</Text>
             </TouchableOpacity>
           </View>
-          {reader && <WebView
+          {reader && <NativeWebView
             ref={webViewRef}
             source={{ uri: reader.url }}
             style={styles.webView}
@@ -113,7 +116,7 @@ export default function App() {
             cacheEnabled
             setSupportMultipleWindows={false}
             originWhitelist={['https://*']}
-            onNavigationStateChange={state => setReaderCanGoBack(state.canGoBack)}
+            onNavigationStateChange={(state: { canGoBack: boolean }) => setReaderCanGoBack(state.canGoBack)}
             startInLoadingState
             renderLoading={() => <View style={styles.loading}><Text style={styles.loadingText}>Cargando contenido de CIBA…</Text></View>}
           />}
