@@ -1,0 +1,30 @@
+name: Validación Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13
+          cache: npm
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Comprobar compatibilidad Expo
+        run: npx expo install --check
+      - name: Revisar configuración Expo
+        run: npx expo-doctor
+      - name: Comprobar TypeScript
+        run: npx tsc --noEmit
+      - name: Generar bundle Android de prueba
+        run: npx expo export --platform android
