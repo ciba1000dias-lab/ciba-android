@@ -6,16 +6,27 @@ Aplicación móvil Android de **CIBA: plataforma digital cubana de educación pa
 
 ## Arquitectura
 
-- Expo SDK 58 y React Native 0.88 con TypeScript.
+- Expo SDK 58, React Native 0.88 y TypeScript.
 - Aplicación nativa independiente del sitio editorial `ciba2.0`.
-- Identidad visual CIBA y navegación inicial por las cuatro áreas.
-- Integración progresiva del catálogo editorial, lector híbrido y biblioteca sin conexión.
-- Construcción de APK de distribución directa mediante EAS Build.
-- Perfil AAB previsto para Google Play.
+- Identidad visual CIBA y navegación nativa por CRIANZA, INFORMÁTICA, BIENESTAR y ACOMPAÑAMIENTO.
+- Buscador inicial de áreas.
+- Lector híbrido con WebView que abre las secciones y conserva el HTML, CSS, JavaScript y multimedia publicados en CIBA.
+- Perfiles EAS separados para APK de distribución directa y AAB de Google Play.
 
-## Estado
+## Estado de desarrollo
 
-**Versión 0.1.0 · Base nativa inicial.** La interfaz y navegación inicial están creadas. El lector integrado, sincronización editorial, base local y compilación APK quedan para las siguientes etapas.
+**Versión 0.1.0 · Base Android inicial creada.**
+
+Ya están incorporadas la interfaz nativa, la navegación principal y la apertura de contenidos dentro de la aplicación.
+
+Pendiente para las siguientes etapas:
+- conectar el catálogo editorial generado por el sitio;
+- búsqueda real de artículos;
+- biblioteca local y lectura sin conexión;
+- sincronización de actualizaciones editoriales;
+- vincular el proyecto a una cuenta EAS y generar el primer APK de prueba.
+
+**Todavía no se ha generado un APK.** La configuración de compilación está preparada, pero requiere vincular el proyecto con Expo EAS.
 
 ## Repositorios
 
@@ -23,19 +34,20 @@ Aplicación móvil Android de **CIBA: plataforma digital cubana de educación pa
 - Plataforma editorial (no modificar desde este proyecto): https://github.com/ciba1000dias-lab/ciba2.0
 - Sitio publicado: https://ciba1000dias-lab.github.io/ciba2.0/
 
-## Desarrollo
+## Requisitos de desarrollo
 
-Requiere Node.js 22.13 o superior para Expo SDK 58.
+Expo SDK 58 requiere Node.js 22.13 o superior.
 
 ```bash
 npm install
+npx expo install --fix
 npx expo start
 ```
 
-Para compilar el APK de prueba:
+Para compilar el APK de prueba, después de vincular EAS:
 
 ```bash
 npx eas-cli build --platform android --profile preview
 ```
 
-La primera compilación requiere configurar el proyecto EAS y su identificador. No se guardan contraseñas ni tokens en el repositorio.
+No se guardan contraseñas ni tokens en el repositorio.
