@@ -21,11 +21,6 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "PENDIENTE_CONFIGURAR_EN_EXPO"
-      }
     }
   }
 }
