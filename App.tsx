@@ -1,30 +1,45 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
-  TextInput, TouchableOpacity, View, Linking
+  BackHandler, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet,
+  Text, TextInput, TouchableOpacity, View, Linking
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 type Section = {
-  id: string;
-  name: string;
-  subtitle: string;
-  description: string;
-  color: string;
-  path: string;
+  id: string; name: string; subtitle: string; description: string;
+  color: string; path: string;
 };
 
 const SITE = 'https://ciba1000dias-lab.github.io/ciba2.0/';
 const SECTIONS: Section[] = [
-  { id: 'C', name: 'CRIANZA', subtitle: 'Vínculos que acompañan', description: 'Competencias parentales, apego, lactancia, desarrollo y primeros pasos.', color: '#397653', path: 'content/c/' },
-  { id: 'I', name: 'INFORMÁTICA', subtitle: 'Conocimiento para navegar', description: 'Información sanitaria digital, herramientas y uso responsable de la tecnología.', color: '#287B9A', path: 'content/i/' },
-  { id: 'B', name: 'BIENESTAR', subtitle: 'Cuidar también se aprende', description: 'Prevención, salud infantil, seguridad, hábitos saludables y señales de alerta.', color: '#8C671F', path: 'content/b/' },
-  { id: 'A', name: 'ACOMPAÑAMIENTO', subtitle: 'Nadie cría en soledad', description: 'Orientación, conversación con especialistas y apoyo a las familias.', color: '#A9443B', path: 'content/a/' }
+  { id: 'C', name: 'CRIANZA', subtitle: 'Vínculos que acompañan', description: 'Competencias parentales, apego, lactancia, desarrollo y primeros pasos.', color: '#397653', path: 'c/' },
+  { id: 'I', name: 'INFORMÁTICA', subtitle: 'Conocimiento para navegar', description: 'Información sanitaria digital, herramientas y uso responsable de la tecnología.', color: '#287B9A', path: 'i/' },
+  { id: 'B', name: 'BIENESTAR', subtitle: 'Cuidar también se aprende', description: 'Prevención, salud infantil, seguridad, hábitos saludables y señales de alerta.', color: '#8C671F', path: 'b/' },
+  { id: 'A', name: 'ACOMPAÑAMIENTO', subtitle: 'Nadie cría en soledad', description: 'Orientación, conversación con especialistas y apoyo a las familias.', color: '#A9443B', path: 'a/' }
 ];
 
 export default function App() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('TODAS');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reader, setReader] = useState<{ title: string; url: string } | null>(null);
+  const [readerCanGoBack, setReaderCanGoBack] = useState(false);
+  const webViewRef = useRef<WebView>(null);
+
+  const closeReader = () => {
+    setReader(null);
+    setReaderCanGoBack(false);
+  };
+
+  useEffect(() => {
+    if (!reader) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (readerCanGoBack) webViewRef.current?.goBack();
+      else closeReader();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [reader, readerCanGoBack]);
 
   const visibleSections = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('es');
@@ -35,15 +50,45 @@ export default function App() {
     });
   }, [query, selected]);
 
-  const openSection = (section: Section) => {
-    Linking.openURL(SITE + section.path);
-  };
-
+  const openSection = (section: Section) => setReader({ title: section.name, url: SITE + section.path });
   const openSite = () => Linking.openURL(SITE);
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#172B27" />
+      <Modal visible={!!reader} animationType="slide" onRequestClose={closeReader}>
+        <SafeAreaView style={styles.readerSafe}>
+          <View style={styles.readerHeader}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => {
+              if (readerCanGoBack) webViewRef.current?.goBack();
+              else closeReader();
+            }} style={styles.readerBack}>
+              <Text style={styles.readerBackText}>‹</Text>
+            </TouchableOpacity>
+            <View style={styles.readerHeading}>
+              <Text numberOfLines={1} style={styles.readerTitle}>{reader?.title || 'CIBA'}</Text>
+              <Text style={styles.readerSubtitle}>CIBA · CRECEMOS ACOMPAÑÁNDONOS</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" onPress={closeReader} style={styles.readerClose}>
+              <Text style={styles.readerCloseText}>×</Text>
+            </TouchableOpacity>
+          </View>
+          {reader && <WebView
+            ref={webViewRef}
+            source={{ uri: reader.url }}
+            style={styles.webView}
+            javaScriptEnabled
+            domStorageEnabled
+            cacheEnabled
+            setSupportMultipleWindows={false}
+            originWhitelist={['https://*']}
+            onNavigationStateChange={state => setReaderCanGoBack(state.canGoBack)}
+            startInLoadingState
+            renderLoading={() => <View style={styles.loading}><Text style={styles.loadingText}>Cargando contenido de CIBA…</Text></View>}
+          />}
+        </SafeAreaView>
+      </Modal>
+
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <TouchableOpacity style={styles.brand} onPress={() => { setSelected('TODAS'); setQuery(''); }}>
@@ -73,7 +118,7 @@ export default function App() {
 
         <View style={styles.hero}>
           <Text style={styles.kicker}>EDUCACIÓN PARENTAL · PRIMEROS MIL DÍAS</Text>
-          <Text style={styles.heroTitle}>Crecer en familia.{ '\n' }Aprender acompañados.</Text>
+          <Text style={styles.heroTitle}>Crecer en familia.{'\n'}Aprender acompañados.</Text>
           <Text style={styles.heroCopy}>Información comprensible y confiable para acompañar a niñas, niños y a quienes los cuidan.</Text>
           <View style={styles.heroRule} />
           <Text style={styles.heroFoot}>DESDE LA CONCEPCIÓN HASTA LOS DOS AÑOS</Text>
@@ -82,15 +127,9 @@ export default function App() {
         <View style={styles.searchBlock}>
           <Text style={styles.sectionTitle}>¿Qué necesitas saber hoy?</Text>
           <Text style={styles.muted}>Busca entre las áreas de CIBA.</Text>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Ej. lactancia, sueño, desarrollo..."
-            placeholderTextColor="#85877D"
-            style={styles.searchInput}
-            returnKeyType="search"
-            accessibilityLabel="Buscar contenidos de CIBA"
-          />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Ej. lactancia, sueño, desarrollo..."
+            placeholderTextColor="#85877D" style={styles.searchInput} returnKeyType="search"
+            accessibilityLabel="Buscar contenidos de CIBA" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {['TODAS', ...SECTIONS.map(section => section.id)].map(id => (
               <TouchableOpacity key={id} onPress={() => setSelected(id)} style={[styles.filter, selected === id && styles.filterActive]}>
@@ -147,6 +186,18 @@ export default function App() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F0E5' },
   page: { paddingBottom: 30, backgroundColor: '#F5F0E5' },
+  readerSafe: { flex: 1, backgroundColor: '#F5F0E5' },
+  readerHeader: { minHeight: 58, paddingHorizontal: 12, backgroundColor: '#172B27', flexDirection: 'row', alignItems: 'center' },
+  readerBack: { width: 42, height: 48, alignItems: 'center', justifyContent: 'center' },
+  readerBackText: { color: '#D9B878', fontSize: 34, lineHeight: 38 },
+  readerHeading: { flex: 1, paddingHorizontal: 8 },
+  readerTitle: { color: '#FFFDF7', fontSize: 13, fontWeight: '800' },
+  readerSubtitle: { color: '#D9B878', fontSize: 7, letterSpacing: 1, marginTop: 3 },
+  readerClose: { width: 38, height: 44, alignItems: 'center', justifyContent: 'center' },
+  readerCloseText: { color: '#FFFDF7', fontSize: 27 },
+  webView: { flex: 1, backgroundColor: '#F5F0E5' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F0E5' },
+  loadingText: { color: '#526E56', fontSize: 13 },
   header: { minHeight: 76, paddingHorizontal: 20, backgroundColor: '#172B27', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   brandMark: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: '#D9B878', alignItems: 'center', justifyContent: 'center' },
