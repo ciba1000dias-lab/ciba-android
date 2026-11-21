@@ -4,6 +4,7 @@ import {
   Text, TextInput, TouchableOpacity, View, Linking
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Compatibilidad de tipos entre React Native 0.88 y react-native-webview.
 const NativeWebView = WebView as unknown as React.ComponentType<any>;
@@ -14,6 +15,10 @@ type Section = {
   id: string; name: string; subtitle: string; description: string;
   color: string; path: string;
 };
+type CatalogArea = { id: string; titulo: string; descripcion?: string; columna: string; ruta_publica: string; orden?: number };
+type CatalogSubsection = { id: string; titulo: string; descripcion?: string; columna: string; area: string; ruta_publica: string };
+type Catalog = { version: number; generado?: string; columnas: any[]; areas: CatalogArea[]; subsecciones: CatalogSubsection[]; paginas: Article[] };
+const CATALOG_KEY = '@ciba/catalogo-v1';
 
 const SITE = 'https://ciba1000dias-lab.github.io/ciba2.0/';
 const SECTIONS: Section[] = [
@@ -30,7 +35,11 @@ export default function App() {
   const [reader, setReader] = useState<{ title: string; url: string } | null>(null);
   const [readerCanGoBack, setReaderCanGoBack] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogState, setCatalogState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [activeSection, setActiveSection] = useState<Section | null>(null);
+  const [activeArea, setActiveArea] = useState<CatalogArea | null>(null);
+  const [activeSubsection, setActiveSubsection] = useState<CatalogSubsection | null>(null);
   const webViewRef = useRef<any>(null);
 
   const closeReader = () => {
@@ -50,17 +59,36 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    fetch(SITE + 'data/catalogo.json')
-      .then(response => {
+    const applyCatalog = (data: Catalog) => {
+      const safeCatalog: Catalog = {
+        version: data.version || 1,
+        generado: data.generado,
+        columnas: Array.isArray(data.columnas) ? data.columnas : [],
+        areas: Array.isArray(data.areas) ? data.areas : [],
+        subsecciones: Array.isArray(data.subsecciones) ? data.subsecciones : [],
+        paginas: Array.isArray(data.paginas) ? data.paginas.filter((item: Article) => item.estado === 'publicado' && !!item.ruta_publica) : []
+      };
+      setCatalog(safeCatalog);
+      setArticles(safeCatalog.paginas);
+      setCatalogState('ready');
+    };
+    const load = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(CATALOG_KEY);
+        if (saved && active) applyCatalog(JSON.parse(saved) as Catalog);
+      } catch {}
+      try {
+        const response = await fetch(SITE + 'data/catalogo.json');
         if (!response.ok) throw new Error('Catálogo no disponible');
-        return response.json();
-      })
-      .then(data => {
+        const data = await response.json() as Catalog;
         if (!active) return;
-        setArticles(Array.isArray(data.paginas) ? data.paginas.filter((item: Article) => item.estado === 'publicado' && item.ruta_publica) : []);
-        setCatalogState('ready');
-      })
-      .catch(() => { if (active) setCatalogState('error'); });
+        applyCatalog(data);
+        await AsyncStorage.setItem(CATALOG_KEY, JSON.stringify(data));
+      } catch {
+        if (active && !catalog) setCatalogState('error');
+      }
+    };
+    load();
     return () => { active = false; };
   }, []);
 
@@ -83,8 +111,20 @@ export default function App() {
     return SECTIONS.filter(section => selected === 'TODAS' || section.id === selected);
   }, [selected]);
 
-  const openSection = (section: Section) => setReader({ title: section.name, url: SITE + section.path });
+  const openSection = (section: Section) => {
+    setActiveSection(section);
+    setActiveArea(null);
+    setActiveSubsection(null);
+  };
+  const openArea = (area: CatalogArea) => { setActiveArea(area); setActiveSubsection(null); };
+  const openSubsection = (subsection: CatalogSubsection) => setActiveSubsection(subsection);
   const openArticle = (article: Article) => setReader({ title: article.titulo, url: SITE + article.ruta_publica });
+  const backToAreas = () => { setActiveArea(null); setActiveSubsection(null); };
+  const backToSubsections = () => setActiveSubsection(null);
+  const sectionAreas = catalog?.areas.filter(area => area.columna === activeSection?.id).sort((a,b) => (a.orden || 0) - (b.orden || 0)) || [];
+  const areaSubsections = catalog?.subsecciones.filter(sub => sub.area === activeArea?.id && sub.columna === activeSection?.id) || [];
+  const areaArticles = catalog?.paginas.filter(article => article.area === activeArea?.id && !areaSubsections.some(sub => article.ruta_publica.startsWith(sub.ruta_publica))) || [];
+  const subsectionArticles = catalog?.paginas.filter(article => !!activeSubsection && article.ruta_publica.startsWith(activeSubsection.ruta_publica)) || [];
   const openSite = () => Linking.openURL(SITE);
 
   return (
@@ -190,23 +230,67 @@ export default function App() {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.contentHeading}>
-            <Text style={styles.sectionTitle}>Explora CIBA</Text>
-            <Text style={styles.muted}>{visibleSections.length} áreas</Text>
-          </View>
-          {visibleSections.map(section => (
-            <TouchableOpacity key={section.id} activeOpacity={0.88} style={styles.sectionCard} onPress={() => openSection(section)}>
-              <View style={[styles.cardAccent, { backgroundColor: section.color }]} />
-              <View style={styles.cardBody}>
-                <Text style={[styles.cardLetter, { color: section.color }]}>{section.id}</Text>
-                <Text style={styles.cardTitle}>{section.name}</Text>
-                <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
-                <Text style={styles.cardDescription}>{section.description}</Text>
-                <Text style={[styles.cardLink, { color: section.color }]}>EXPLORAR CONTENIDOS  ›</Text>
+          {!activeSection ? (
+            <>
+              <View style={styles.contentHeading}>
+                <Text style={styles.sectionTitle}>Explora CIBA</Text>
+                <Text style={styles.muted}>{visibleSections.length} áreas</Text>
               </View>
-            </TouchableOpacity>
-          ))}
-          {visibleSections.length === 0 && <Text style={styles.empty}>No encontramos coincidencias. Prueba con otras palabras.</Text>}
+              {visibleSections.map(section => (
+                <TouchableOpacity key={section.id} activeOpacity={0.88} style={styles.sectionCard} onPress={() => openSection(section)}>
+                  <View style={[styles.cardAccent, { backgroundColor: section.color }]} />
+                  <View style={styles.cardBody}>
+                    <Text style={[styles.cardLetter, { color: section.color }]}>{section.id}</Text>
+                    <Text style={styles.cardTitle}>{section.name}</Text>
+                    <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
+                    <Text style={styles.cardDescription}>{section.description}</Text>
+                    <Text style={[styles.cardLink, { color: section.color }]}>EXPLORAR CONTENIDOS  ›</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {visibleSections.length === 0 && <Text style={styles.empty}>No encontramos coincidencias. Prueba con otras palabras.</Text>}
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.breadcrumb} onPress={() => {
+                if (activeSubsection) backToSubsections();
+                else if (activeArea) backToAreas();
+                else setActiveSection(null);
+              }}>
+                <Text style={styles.breadcrumbText}>‹  {activeSubsection ? activeArea?.titulo : activeArea ? activeSection.name : 'Volver a las cuatro áreas'}</Text>
+              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>{activeSubsection?.titulo || activeArea?.titulo || activeSection.name}</Text>
+              <Text style={styles.muted}>{activeSubsection?.descripcion || activeArea?.descripcion || activeSection.description}</Text>
+              {!catalog && <Text style={styles.searchHint}>Conéctate una vez para guardar el índice editorial y poder explorar esta área sin conexión.</Text>}
+              {catalog && !activeArea && sectionAreas.map(area => (
+                <TouchableOpacity key={area.id} style={styles.treeCard} onPress={() => openArea(area)}>
+                  <Text style={styles.treeCode}>{area.id}</Text>
+                  <Text style={styles.treeTitle}>{area.titulo}</Text>
+                  {!!area.descripcion && <Text style={styles.treeDescription}>{area.descripcion}</Text>}
+                  <Text style={styles.treeLink}>EXPLORAR SECCIÓN  ›</Text>
+                </TouchableOpacity>
+              ))}
+              {catalog && activeArea && !activeSubsection && areaSubsections.map(sub => (
+                <TouchableOpacity key={sub.id} style={styles.treeCard} onPress={() => openSubsection(sub)}>
+                  <Text style={styles.treeCode}>{sub.id}</Text>
+                  <Text style={styles.treeTitle}>{sub.titulo}</Text>
+                  {!!sub.descripcion && <Text style={styles.treeDescription}>{sub.descripcion}</Text>}
+                  <Text style={styles.treeLink}>VER SUBSECCIÓN  ›</Text>
+                </TouchableOpacity>
+              ))}
+              {catalog && (activeSubsection ? subsectionArticles : areaArticles).map(article => (
+                <TouchableOpacity key={article.id} style={styles.treeCard} onPress={() => openArticle(article)}>
+                  <Text style={styles.treeCode}>{article.id}</Text>
+                  <Text style={styles.treeTitle}>{article.titulo}</Text>
+                  {!!article.descripcion && <Text style={styles.treeDescription}>{article.descripcion}</Text>}
+                  <Text style={styles.treeLink}>LEER ARTÍCULO  ›</Text>
+                </TouchableOpacity>
+              ))}
+              {catalog && activeSection && !activeArea && sectionAreas.length === 0 && <Text style={styles.searchHint}>No hay secciones publicadas en esta área todavía.</Text>}
+              {catalog && activeArea && !activeSubsection && areaSubsections.length === 0 && areaArticles.length === 0 && <Text style={styles.searchHint}>Esta sección todavía no tiene contenidos publicados.</Text>}
+              {catalog && activeSubsection && subsectionArticles.length === 0 && <Text style={styles.searchHint}>Esta subsección todavía no tiene artículos publicados.</Text>}
+            </>
+          )}
         </View>
 
         <View style={styles.nayara}>
@@ -293,6 +377,13 @@ const styles = StyleSheet.create({
   cardDescription: { color: '#626A60', fontSize: 12, lineHeight: 19, marginTop: 7 },
   cardLink: { fontSize: 9, fontWeight: '900', letterSpacing: 1, marginTop: 14 },
   empty: { color: '#73776D', paddingVertical: 25, fontSize: 13 },
+  breadcrumb: { alignSelf: 'flex-start', paddingVertical: 10, paddingRight: 12, marginBottom: 12 },
+  breadcrumbText: { color: '#A9583E', fontSize: 12, fontWeight: '800' },
+  treeCard: { padding: 16, borderWidth: 1, borderColor: '#E4DDCF', borderRadius: 11, backgroundColor: '#FFFDF7', marginTop: 12 },
+  treeCode: { color: '#A9583E', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  treeTitle: { color: '#172B27', fontFamily: 'Georgia', fontSize: 19, lineHeight: 25, marginTop: 6 },
+  treeDescription: { color: '#626A60', fontSize: 12, lineHeight: 18, marginTop: 6 },
+  treeLink: { color: '#397653', fontSize: 9, fontWeight: '900', letterSpacing: 0.8, marginTop: 12 },
   nayara: { flexDirection: 'row', gap: 15, marginHorizontal: 20, marginTop: 24, padding: 18, borderRadius: 14, backgroundColor: '#E9DDC9', borderWidth: 1, borderColor: '#D8C6A8' },
   nayaraOrb: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#D9B878', alignItems: 'center', justifyContent: 'center' },
   nayaraOrbText: { color: '#493A32', fontFamily: 'Georgia', fontSize: 25 },
