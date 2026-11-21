@@ -23,7 +23,7 @@ Pendiente para las siguientes etapas:
 - conectar el catálogo editorial generado por el sitio;
 - biblioteca local y lectura sin conexión;
 - sincronización de actualizaciones editoriales;
-- vincular el proyecto a una cuenta EAS y generar el primer APK de prueba.
+- ejecutar la primera vinculación del proyecto con Expo EAS y validar la generación del APK de prueba.
 
 **Todavía no se ha generado un APK.** La configuración de compilación está preparada, pero requiere vincular el proyecto con Expo EAS.
 
@@ -50,3 +50,13 @@ npx eas-cli build --platform android --profile preview
 ```
 
 No se guardan contraseñas ni tokens en el repositorio.
+
+
+## Compilación automatizada
+
+La cuenta Expo propietaria configurada para esta aplicación es `rjalonso-ciba`.
+El repositorio utiliza el secreto de GitHub `EXPO_TOKEN`; el token no debe incluirse en archivos ni mensajes.
+
+El flujo **CIBA Android APK** se ejecuta desde GitHub Actions (pestaña Actions) o al modificar los archivos principales de la aplicación. Primero vincula el proyecto mediante `eas project:init` y después solicita a EAS Build un APK Android con el perfil `preview`.
+
+El APK estará disponible en el enlace de compilación que EAS muestre cuando el trabajo termine correctamente. La creación del flujo no significa que el APK ya esté generado.
