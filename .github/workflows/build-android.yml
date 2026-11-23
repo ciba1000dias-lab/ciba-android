@@ -1,24 +1,14 @@
 name: CIBA Android APK
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - "App.tsx"
-      - "app.json"
-      - "eas.json"
-      - "package.json"
-      - "tsconfig.json"
-      - ".github/workflows/build-android.yml"
-
+    paths: ["App.tsx", "app.json", "eas.json", "package.json", "tsconfig.json", "assets/**", ".github/workflows/build-android.yml"]
 permissions:
   contents: read
-
 concurrency:
   group: ciba-android-apk
   cancel-in-progress: false
-
 jobs:
   build:
     name: Create Android APK
@@ -26,27 +16,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
-      - name: Link Expo project
-        run: npx eas-cli@latest project:init --account rjalonso-ciba --force --non-interactive
+      - name: Verify Expo project link
+        run: npx eas-cli@latest project:info --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
+      - name: Check native Android prebuild
+        run: npx expo prebuild --platform android --no-install --clean
       - name: Build preview APK
         run: npx eas-cli@latest build --platform android --profile preview --non-interactive --wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Show EAS project configuration
-        if: always()
-        run: npx eas-cli@latest project:info --non-interactive || true
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

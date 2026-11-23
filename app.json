@@ -2,28 +2,20 @@
   "expo": {
     "name": "CIBA",
     "slug": "ciba-android",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "icon": "assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "ciba",
-    "platforms": [
-      "android"
-    ],
+    "platforms": ["android"],
     "android": {
       "package": "cu.ciba.app",
-      "versionCode": 2,
-      "adaptiveIcon": {
-        "foregroundImage": "assets/adaptive-icon.png",
-        "backgroundColor": "#F8F1E7"
-      }
+      "versionCode": 3,
+      "adaptiveIcon": {"foregroundImage": "assets/adaptive-icon.png", "backgroundColor": "#F8F1E7"}
     },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "owner": "rjalonso-ciba"
+    "updates": {"fallbackToCacheTimeout": 0},
+    "runtimeVersion": {"policy": "appVersion"},
+    "owner": "rjalonso-ciba",
+    "extra": {"eas": {"projectId": "6de96b14-cfa1-4e50-bee0-7f60c938c618"}}
   }
 }
