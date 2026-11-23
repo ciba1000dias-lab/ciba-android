@@ -498,7 +498,6 @@ const styles = StyleSheet.create({
   syncText: { flex: 1, color: '#85877D', fontSize: 9 },
   syncButton: { minHeight: 36, minWidth: 92, alignItems: 'center', justifyContent: 'center' },
   syncButtonText: { color: '#527A45', fontSize: 9, fontWeight: '900' },
-  contentScreen: { paddingHorizontal: 19, paddingTop: 29, paddingBottom: 25 },
   screenTitle: { color: '#263B2D', fontFamily: 'Georgia', fontSize: 29, marginTop: 8 },
   empty: { color: '#73776D', fontSize: 12, lineHeight: 19, paddingVertical: 20 },
   libraryNote: { color: '#77776A', fontSize: 10, lineHeight: 16, marginTop: 18 },
