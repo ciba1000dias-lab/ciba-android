@@ -229,7 +229,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#263B2D" />
+      <StatusBar barStyle="light-content" />
       <Modal visible={!!reader} animationType="slide" onRequestClose={closeReader}>
         <SafeAreaView style={styles.readerSafe}>
           <View style={styles.readerHeader}>
